@@ -8,11 +8,15 @@
   "name": "assignment-4",
   "version": "1.0.0",
   "main": "index.js",
+
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "start-dev": "nodemon index.js"
   },
+  "engines": {
+    "node": "20.14.0"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
