@@ -1,7 +1,5 @@
-import db_connection from "../../../DB/Model/db-connection.js";
-import axios from "axios";
-
-export const addMember = (req, res, next) => {
+import Member from "../../../DB/Model/member.model.js";
+export const addMember = async (req, res) => {
   const {
     name,
     phonenumber,
@@ -22,117 +20,115 @@ export const addMember = (req, res, next) => {
     !endmembership ||
     !membershipcost ||
     !trainerid
-  )
-    return res.json({ message: "all field is required" });
-  const addQuery = `INSERT INTO member(name,phone_number,national_id,status,start_membership,end_membership, membership_cost,trainer_id) VALUES('${name}','${phonenumber}','${nationalid}','${status}','${startmembership}','${endmembership}','${membershipcost}','${trainerid}')`;
-  db_connection.execute(addQuery, (err, result) => {
-    if (err) return res.json({ message: err.message });
-    if (!result.affectedRows) return res.json({ message: "error in query" });
-    return res.json({
-      message: "added successfully",
-      data: result.affectedRows,
+  ) {
+    return res.status(400).json({ message: "all fields are required" });
+  }
+
+  try {
+    const newMember = await Member.create({
+      name,
+      phone_number: phonenumber,
+      national_id: nationalid,
+      status,
+      start_membership: startmembership,
+      end_membership: endmembership,
+      membership_cost: membershipcost,
+      trainer_id: trainerid,
     });
-  });
+
+    return res.status(201).json({
+      message: "Member added successfully",
+      data: newMember,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const getMember = (req, res, next) => {
-  const selectQuery = `select * from member`;
-  db_connection.execute(selectQuery, (err, result) => {
-    if (err) {
-      return res.json({ error: "error in query", err: err.message });
-    }
-    return res.json({ message: "MEMBERS", data: result });
-  });
+export const getMember = async (req, res) => {
+  try {
+    const members = await Member.findAll();
+    return res.status(200).json({
+      message: "Members retrieved successfully",
+      data: members,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
 export const getSpecificMember = async (req, res) => {
   const { id } = req.params;
-  const selectQuery = `select name,start_membership,end_membership,membership_cost , deleted from member WHERE member_id =${id}`;
-  let now = new Date();
-  let day = now.getDate();
-  let month = now.getMonth() + 1;
-  let year = now.getFullYear();
-  let currentDate = day + "/" + month + "/" + year;
-  db_connection.execute(selectQuery, (err, result) => {
-    if (err) {
-      return res.json({ error: "error in query", err: err.message });
-    }
-    if (result.length == 0) return res.json({ message: "member not found" });
 
-    let member_endmembership = result[0].end_membership.split("/");
-    let compareDate = currentDate.split("/");
-    if (compareDate[2] > member_endmembership[2]) {
-      return res.json({
-        message: "this member is not allowed to enter the gym",
-      });
-    } else if (compareDate[1] > member_endmembership[1]) {
-      return res.json({
-        message: "this member is not allowed to enter the gym",
-      });
-    } else if (
-      compareDate[1] > member_endmembership[1] &&
-      compareDate[0] > member_endmembership[0]
-    ) {
-      return res.json({
-        message: "this member is not allowed to enter the gym",
-      });
+  try {
+    const member = await Member.findByPk(id);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
     }
 
-    return res.json({ message: "MEMBER Found", data: result });
-  });
+    return res.status(200).json({
+      message: "Member found",
+      data: member,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const updateMember = async (req, res, next) => {
+export const updateMember = async (req, res) => {
+  const { id } = req.params;
   const { name, startmembership, endmembership, membershipcost, trainerid } =
     req.body;
-  const { id } = req.params;
 
-  if (
-    !name ||
-    !startmembership ||
-    !endmembership ||
-    !membershipcost ||
-    !trainerid
-  )
-    return res.status(400).json({messag:"all field is required"});
-
-  let member = await axios.get(
-    `http://localhost:3000/member/getspecificmember/${id}`
-  );
-
-  if (!member?.data?.data)
-    return res.status(404).json({ message: "member not found" });
-  const updateQuery = `UPDATE member SET name='${name}',start_membership='${startmembership}',end_membership='${endmembership}',membership_cost ='${membershipcost}',trainer_id='${trainerid}' WHERE member_id=${id}`;
-  db_connection.execute(updateQuery, (err, result) => {
-    if (err) {
-      return res.json({ err: err.message });
+  try {
+    const member = await Member.findByPk(id);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
     }
-    if (result.affectedRows == 1)
-      return res.json({
-        message: "member updated successfully",
-      });
-  });
+
+    member.name = name || member.name;
+    member.start_membership = startmembership || member.start_membership;
+    member.end_membership = endmembership || member.end_membership;
+    member.membership_cost = membershipcost || member.membership_cost;
+    member.trainer_id = trainerid || member.trainer_id;
+
+    await member.save();
+
+    return res
+      .status(200)
+      .json({ message: "Member updated successfully", data: member });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const deleteMember = async (req, res, next) => {
+export const deleteMember = async (req, res) => {
   const { id } = req.params;
-  let member = await axios.get(
-    `http://localhost:3000/member/getspecificmember/${id}`
-  );
-  if (!member?.data?.data)
-    return res.status(404).json({ message: member.data.message });
 
-  let softDelete = `UPDATE member SET deleted= '1' where member_id=${id}`;
-  db_connection.execute(softDelete, (err, result) => {
-    if (err) return res.status(500).json({ message: err.message });
-    return res.status(200).json({ message: "member deleted successfully" });
-  });
+  try {
+    const member = await Member.findByPk(id);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    // Soft delete: تغيير الحقل "deleted" إلى true
+    member.deleted = true;
+    await member.save();
+
+    return res.status(200).json({ message: "Member deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const revenuesMember = (req, res, nexr) => {
-  let revenues = `SELECT SUM(membership_cost) as revenuesMember from member`;
-  db_connection.execute(revenues, (err, result) => {
-    if (err) return res.status(500).json({ message: err.message });
-    return res.status(200).json({ message: "revenue found ", data: result });
-  });
+export const revenuesMember = async (req, res) => {
+  try {
+    const result = await Member.sum("membership_cost"); // استخدام دالة sum من Sequelize لحساب الإيرادات
+    return res.status(200).json({
+      message: "Revenue found",
+      data: { revenuesMember: result }, // result يحتوي على مجموع الإيرادات
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };

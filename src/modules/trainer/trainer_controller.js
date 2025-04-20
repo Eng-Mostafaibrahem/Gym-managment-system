@@ -1,107 +1,136 @@
-import db_connection from "../../../DB/Model/db-connection.js";
-import axios from "axios";
+import Trainer from "../../../DB/Model/trainer.model.js"; // تأكد من المسار الصحيح
 
-export const addTrainer = (req, res, next) => {
-  ////data///
+export const addTrainer = async (req, res) => {
   const { name, startduration, endduration } = req.body;
-  ////logic/////
-  if (!name || !startduration || !endduration)
-    return res.json("all field are required");
-  const insertQuery = `INSERT INTO trainer(name,start_duration,end_duration) VALUES('${name}','${startduration}','${endduration}')`;
 
-  db_connection.execute(insertQuery, (err, result) => {
-    if (err) {
-      console.log(err.message);
-      return res.json({ error: "error in query", err: err.message });
-    }
-    if (!result.affectedRows) {
-      return res.json("user not added");
-    }
+  if (!name || !startduration || !endduration) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
 
-    return res.json({ message: "user added successfully" });
-  });
+  try {
+    const trainer = await Trainer.create({
+      name,
+      start_duration: startduration,
+      end_duration: endduration,
+    });
+    return res
+      .status(201)
+      .json({ message: "Trainer added successfully", data: trainer });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const getTrainer = (req, res, next) => {
-  const selectQuery = `select * from trainer`;
-
-  db_connection.execute(selectQuery, (err, result) => {
-    if (err) {
-      console.log(err.message);
-      return res.json({ error: "error in query", err: err.message });
-    }
-
-    return res.json({ message: "User Found", data: result });
-  });
+export const getTrainer = async (req, res) => {
+  try {
+    const trainers = await Trainer.findAll({
+      where: { is_deleted: false },
+    });
+    return res.status(200).json({ message: "Trainers found", data: trainers });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const getSpecificTrainer = (req, res, next) => {
-  const selectQuery = `select * from trainer WHERE trainer_id =${req.params.id}`;
+export const getSpecificTrainer = async (req, res) => {
+  const { id } = req.params;
 
-  db_connection.execute(selectQuery, (err, result) => {
-    if (err) {
-      console.log(err.message);
-      return res.json({ error: "error in query", err: err.message });
+  try {
+    const trainer = await Trainer.findOne({
+      where: { trainer_id: id, is_deleted: false },
+    });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
     }
-    if (result.length == 0) return res.json({ message: "trainer not found" });
-    return res.json({ message: "User Found", data: result });
-  });
+    return res.status(200).json({ message: "Trainer found", data: trainer });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
-
-export const updateTrainer = async (req, res, next) => {
+export const updateTrainer = async (req, res) => {
   const { name, startduration, endduration } = req.body;
   const { id } = req.params;
 
   if (!name || !startduration || !endduration) {
-    return res.json({ message: "all field are required" });
+    return res.status(400).json({ message: "All fields are required" });
   }
-  const updateQuery = `UPDATE trainer SET name='${name}',start_duration='${startduration}',end_duration='${endduration}' WHERE trainer_id=${id}`;
-  const specificTrainer = await axios.get(
-    `http://localhost:3000/trainer/getspecifictrainer/${id}`
-  );
 
-  if (!specificTrainer?.data?.data)
-    return res.json({ message: "trainer not found" });
-
-  db_connection.execute(updateQuery, (err, result) => {
-    if (err) {
-      return res.json({ err: err.message });
+  try {
+    const trainer = await Trainer.findOne({ where: { trainer_id: id } });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
     }
-    if (result.affectedRows == 1)
-      return res.json({
-        message: "trainer updated successfully",
-      });
-  });
+
+    trainer.name = name;
+    trainer.start_duration = startduration;
+    trainer.end_duration = endduration;
+    await trainer.save();
+
+    return res
+      .status(200)
+      .json({ message: "Trainer updated successfully", data: trainer });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-export const deleteTrainer = async (req, res, next) => {
+export const deleteTrainer = async (req, res) => {
   const { id } = req.params;
-  const specificTrainer = await axios.get(
-    `http://localhost:3000/trainer/getspecifictrainer/${id}`
-  );
-  if (!specificTrainer?.data?.data)
-    return res.json({ message: "trainer not found" });
-  const deleteTrainer = `  DELETE FROM trainer where trainer_id= ${id} `;
 
-  db_connection.execute(deleteTrainer, (error, result) => {
-    if (error) return res.json({ message: error.message });
-    if (result.affectedRows == 1)
-      return res.json({ message: "trainer deleted successfully" });
-  });
+  try {
+    const trainer = await Trainer.findByPk(id);
+    if (!trainer || trainer.is_deleted) {
+      return res.status(404).json({ message: "Trainer not found" });
+    }
+
+    // Soft delete
+    await trainer.update({ is_deleted: true });
+
+    return res
+      .status(200)
+      .json({ message: "Trainer soft deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error soft deleting trainer:", err.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
+  }
 };
 
-export const revenuesSpecificTrainer = async (req, res, next) => {
+
+export const getDeletedTrainer = async (req, res) => {
+  try {
+    const trainers = await Trainer.findAll({
+      where: { is_deleted: true },
+    });
+    return res.status(200).json({ message: "Trainers found", data: trainers });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+export const revenuesSpecificTrainer = async (req, res) => {
   const { id } = req.params;
-  let revenueTrainer = `SELECT SUM(membership_cost) as revenuetrainer from member WHERE trainer_id=${id}`;
-  let trainer = await axios.get(
-    `http://localhost:3000/trainer/getspecifictrainer/${id}`
-  );
-  if (!trainer?.data?.data)
-    return res.status(404).json({ message: trainer.data.message });
-  db_connection.execute(revenueTrainer, (err, result) => {
-    if (err) {
-      return res.json({ message: err.message });
+
+  try {
+    const trainer = await Trainer.findOne({ where: { trainer_id: id } });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
     }
-    return res.json({ message: "revenue found", data: result });
-  });
+
+    // حساب الإيرادات
+    const revenue = await Member.sum("membership_cost", {
+      where: {
+        trainer_id: id,
+      },
+    });
+
+    return res
+      .status(200)
+      .json({ message: "Revenue found", data: { revenuetrainer: revenue } });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
