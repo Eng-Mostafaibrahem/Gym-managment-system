@@ -4,7 +4,7 @@ import * as trainerController from "./trainer_controller.js";
 
 router.post("/addtrainer", trainerController.addTrainer);
 router.get("/gettrainer", trainerController.getTrainer);
-router.get("/getDeletedTrainer", trainerController.getDeletedTrainer);
+router.get("/getdeletedTrainer", trainerController.getDeletedTrainer);
 router.get("/getspecifictrainer/:id", trainerController.getSpecificTrainer);
 router.put("/updatespecifictrainer/:id", trainerController.updateTrainer);
 router.put("/deletespecifictrainer/:id", trainerController.deleteTrainer);

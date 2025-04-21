@@ -111,7 +111,6 @@ export const deleteMember = async (req, res) => {
       return res.status(404).json({ message: "Member not found" });
     }
 
-    // Soft delete: تغيير الحقل "deleted" إلى true
     member.deleted = true;
     await member.save();
 
@@ -121,12 +120,23 @@ export const deleteMember = async (req, res) => {
   }
 };
 
+export const getDeletedMember = async (req, res) => {
+  try {
+    const trainers = await Member.findAll({
+      where: { deleted: true },
+    });
+    return res.status(200).json({ message: "Trainers found", data: trainers });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 export const revenuesMember = async (req, res) => {
   try {
-    const result = await Member.sum("membership_cost"); // استخدام دالة sum من Sequelize لحساب الإيرادات
+    const result = await Member.sum("membership_cost");
     return res.status(200).json({
       message: "Revenue found",
-      data: { revenuesMember: result }, // result يحتوي على مجموع الإيرادات
+      data: { revenuesMember: result },
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });

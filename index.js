@@ -2,8 +2,8 @@ import express from "express";
 import trainer_routes from "./src/modules/trainer/trainer_routes.js";
 import member_routes from "./src/modules/member/member_routes.js";
 import { connectDB } from "./DB/db-connection.js";
-import dotenv from 'dotenv';
-dotenv.config();  // تحميل المتغيرات من ملف .env
+import dotenv from "dotenv";
+dotenv.config(); // تحميل المتغيرات من ملف .env
 
 const app = express();
 

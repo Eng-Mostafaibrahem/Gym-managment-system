@@ -1,4 +1,5 @@
-import Trainer from "../../../DB/Model/trainer.model.js"; // تأكد من المسار الصحيح
+import Trainer from "../../../DB/Model/trainer.model.js";
+import Member from "./../../../DB/Model/member.model.js";
 
 export const addTrainer = async (req, res) => {
   const { name, startduration, endduration } = req.body;
@@ -97,7 +98,6 @@ export const deleteTrainer = async (req, res) => {
   }
 };
 
-
 export const getDeletedTrainer = async (req, res) => {
   try {
     const trainers = await Trainer.findAll({
@@ -109,8 +109,6 @@ export const getDeletedTrainer = async (req, res) => {
   }
 };
 
-
-
 export const revenuesSpecificTrainer = async (req, res) => {
   const { id } = req.params;
 
@@ -120,7 +118,6 @@ export const revenuesSpecificTrainer = async (req, res) => {
       return res.status(404).json({ message: "Trainer not found" });
     }
 
-    // حساب الإيرادات
     const revenue = await Member.sum("membership_cost", {
       where: {
         trainer_id: id,
